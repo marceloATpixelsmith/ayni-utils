@@ -11,6 +11,15 @@ window.AyniUtils.misc = {
 
 
 
+function mapLookup(items, locale) {
+  return (items || []).map(u => ({
+    value: u.id,
+    title: locale === 'en' ? u.title_en : u.title_es,
+    color: u.color_code,
+    icon: u.icon
+  }));
+}
+
 
 
 function emailFromUsersById(users, id, idKey = 'id', emailKey = 'email') {
