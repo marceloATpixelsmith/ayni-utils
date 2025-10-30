@@ -23,17 +23,6 @@
 // ========================
 
 
-// js/helpersFormatting.js
-window.AyniUtils = window.AyniUtils || {};
-window.AyniUtils.formatting = {
-  version: '2025.10.30a',
-  toYmd(d){
-    const x = new Date(d);
-    return `${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,'0')}-${String(x.getDate()).padStart(2,'0')}`;
-  }
-};
-
-
 const _DEFAULT_LOCALE =
   (typeof navigator !== 'undefined' && navigator.language) || 'en-US';
 
