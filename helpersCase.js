@@ -4,18 +4,6 @@
 */
 
 
-
-// js/helpersFormatting.js
-window.AyniUtils = window.AyniUtils || {};
-window.AyniUtils.case = {
-  version: '2025.10.30a',
-  toYmd(d){
-    const x = new Date(d);
-    return `${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,'0')}-${String(x.getDate()).padStart(2,'0')}`;
-  }
-};
-
-
 const CASE = (() => {
   const getLng = (lng) =>
     lng || (typeof i18n !== 'undefined' && i18n.language) || 'en';
