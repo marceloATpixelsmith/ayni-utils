@@ -246,7 +246,7 @@ if (typeof module !== 'undefined') {
 //parseStrictJson(cleanMe) -> object
 //CLEAN REMNANTS (FENCES/ZERO-WIDTHS) THEN JSON.PARSE
 //==============================
-function parseStrictJson(cleanMe)
+function parseStrictJSON(cleanMe)
 {
     const txt = String(cleanMe ?? '')
         .replace(/^[\uFEFF\s]*```(?:json)?\s*/i, '')   //REMOVE ```json
@@ -255,9 +255,3 @@ function parseStrictJson(cleanMe)
         .trim();
     return JSON.parse(txt);
 }
-
-// EXAMPLE USAGE WITH CHAT COMPLETIONS:
-const httpResp = {{ data }};
-const content = httpResp?.choices?.[0]?.message?.content ?? '';
-const obj = parseStrictJson(content);
-return obj;  // { success, translated_text, translated_to }
