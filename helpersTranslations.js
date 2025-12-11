@@ -188,11 +188,11 @@ function processBundle(i18nInstance, srcBundle, opts)
 //================== PUBLIC API (GLOBAL) ==================
 window.helpersTranslations = {
   SEP: __HT_SEP,
-  splitBundle: HT_splitBundle,
-  expandInlineRefsForLang: HT_expandInlineRefsForLang,
-  titleCaseEN: HT_titleCaseEN,
-  sentenceCaseES: HT_sentenceCaseES,
-  transformOutsidePlaceholders: HT_transformOutsidePlaceholders,
-  autoCase: HT_autoCase,
-  processBundle: HT_processBundle
+  splitBundle: splitBundle,
+  expandInlineRefsForLang: expandInlineRefsForLang,
+  titleCaseEN: titleCaseEN,
+  sentenceCaseES: sentenceCaseES,
+  transformOutsidePlaceholders: transformOutsidePlaceholders,
+  autoCase: autoCase,
+  processBundle: processBundle
 };
