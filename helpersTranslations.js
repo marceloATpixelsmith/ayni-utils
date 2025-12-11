@@ -140,7 +140,7 @@ function autoCase(lang, tree)
   const apply = function(txt)
   {
     const fn = (lang === 'en') ? titleCaseEN : sentenceCaseES;
-    return HT_transformOutsidePlaceholders(txt, function(segment){ return fn(segment); });
+    return transformOutsidePlaceholders(txt, function(segment){ return fn(segment); });
   };
 
   (function walk(node)
@@ -172,15 +172,15 @@ function autoCase(lang, tree)
 function processBundle(i18nInstance, srcBundle, opts)
 {
   const cfg = Object.assign({ sep:__HT_SEP, autoCase:true }, (opts || {}));
-  const split = HT_splitBundle(srcBundle, cfg.sep);
+  const split = splitBundle(srcBundle, cfg.sep);
   const enTree = __HT_deepClone(split.en);
   const esTree = __HT_deepClone(split.es);
-  HT_expandInlineRefsForLang(i18nInstance, 'en', enTree);
-  HT_expandInlineRefsForLang(i18nInstance, 'es', esTree);
+  expandInlineRefsForLang(i18nInstance, 'en', enTree);
+  expandInlineRefsForLang(i18nInstance, 'es', esTree);
   if (cfg.autoCase)
   {
-    HT_autoCase('en', enTree);
-    HT_autoCase('es', esTree);
+    autoCase('en', enTree);
+    autoCase('es', esTree);
   }
   return { en:enTree, es:esTree };
 }
