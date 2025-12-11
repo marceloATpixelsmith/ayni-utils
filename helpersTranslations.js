@@ -139,7 +139,7 @@ function autoCase(lang, tree)
 {
   const apply = function(txt)
   {
-    const fn = (lang === 'en') ? HT_titleCaseEN : HT_sentenceCaseES;
+    const fn = (lang === 'en') ? titleCaseEN : sentenceCaseES;
     return HT_transformOutsidePlaceholders(txt, function(segment){ return fn(segment); });
   };
 
