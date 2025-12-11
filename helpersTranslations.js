@@ -10,7 +10,7 @@ const __HT_isRef = function(s) { return typeof s === 'string' && s.includes('$t(
 const __HT_deepClone = function(obj) { return JSON.parse(JSON.stringify(obj)); };
 
 //================== PIPE SPLITTER(KEEPS $t(...) INTACT) ==================
-function HT_splitBundle(src, sep = __HT_SEP)
+function splitBundle(src, sep = __HT_SEP)
 {
   const out = { en:{}, es:{} };
   (function walk(obj, dstEn, dstEs)
@@ -49,7 +49,7 @@ function HT_splitBundle(src, sep = __HT_SEP)
 }
 
 //================== INLINE $t(...) RESOLVER(POST-INIT) ==================
-function HT_expandInlineRefsForLang(i18nInstance, lang, tree)
+function expandInlineRefsForLang(i18nInstance, lang, tree)
 {
   const t = i18nInstance.getFixedT(lang);
   const REF_RE = /\$t\(\s*([^)]+?)\s*\)/g;
@@ -79,7 +79,7 @@ function HT_expandInlineRefsForLang(i18nInstance, lang, tree)
 }
 
 //================== AUTO-CASE(EN: TITLE CASE, ES: SENTENCE CASE) ==================
-function HT_titleCaseEN(s)
+function titleCaseEN(s)
 {
   const parts = String(s).split(/(\s+|[-/]|[“”"‘’'(){}\[\]:;,.!?]+)/);
   const small = new Set(['a','an','and','as','at','but','by','for','in','nor','of','on','or','per','the','to','vs','via']);
@@ -99,7 +99,7 @@ function HT_titleCaseEN(s)
   }).join('');
 }
 
-function HT_sentenceCaseES(s)
+function sentenceCaseES(s)
 {
   const str = String(s);
   const m = str.match(/^(\s*[¿¡]?\s*[«“"]?\s*)(.*)$/u);
@@ -119,7 +119,7 @@ function HT_sentenceCaseES(s)
 }
 
 //================== TRANSFORM ONLY TEXT OUTSIDE {{...}} AND <...> ==================
-function HT_transformOutsidePlaceholders(s, transformFn)
+function transformOutsidePlaceholders(s, transformFn)
 {
   const str = String(s);
   const re = /({{[^}]+}}|<[^>]+>)/g;
@@ -135,7 +135,7 @@ function HT_transformOutsidePlaceholders(s, transformFn)
 }
 
 //================== AUTO-CASE TREE ==================
-function HT_autoCase(lang, tree)
+function autoCase(lang, tree)
 {
   const apply = function(txt)
   {
@@ -169,7 +169,7 @@ function HT_autoCase(lang, tree)
 }
 
 //================== FULL PIPELINE: SPLIT → EXPAND $t → AUTO-CASE ==================
-function HT_processBundle(i18nInstance, srcBundle, opts)
+function processBundle(i18nInstance, srcBundle, opts)
 {
   const cfg = Object.assign({ sep:__HT_SEP, autoCase:true }, (opts || {}));
   const split = HT_splitBundle(srcBundle, cfg.sep);
