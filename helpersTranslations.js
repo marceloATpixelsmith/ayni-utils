@@ -184,15 +184,3 @@ function processBundle(i18nInstance, srcBundle, opts)
   }
   return { en:enTree, es:esTree };
 }
-
-//================== PUBLIC API (GLOBAL) ==================
-window.helpersTranslations = {
-  SEP: __HT_SEP,
-  splitBundle: splitBundle,
-  expandInlineRefsForLang: expandInlineRefsForLang,
-  titleCaseEN: titleCaseEN,
-  sentenceCaseES: sentenceCaseES,
-  transformOutsidePlaceholders: transformOutsidePlaceholders,
-  autoCase: autoCase,
-  processBundle: processBundle
-};
