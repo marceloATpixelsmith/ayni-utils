@@ -209,3 +209,31 @@ function getBrowserLocale()
 
   return (two === 'es') ? 'es' : 'en';
 }
+
+//=========================================
+// NORMALIZE LOCALE (EN/ES ONLY)
+// RETURNS "en" OR "es"
+//=========================================
+function normalizeLocale(raw)
+{
+  const v =
+    (raw ?? '')
+      .toString()
+      .trim()
+      .toLowerCase();
+
+  if (v === 'es')
+    {
+      return 'es';
+    }
+
+  if (v === 'en')
+    {
+      return 'en';
+    }
+
+  //HANDLE "es-MX" ETC
+  const two = v.slice(0, 2);
+
+  return (two === 'es') ? 'es' : 'en';
+}
