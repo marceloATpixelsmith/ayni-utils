@@ -48,35 +48,73 @@ function splitBundle(src, sep = __HT_SEP)
   return out;
 }
 
-//================== INLINE $t(...) RESOLVER(POST-INIT) ==================
-function expandInlineRefsForLang(i18nInstance, lang, tree)
-{
-  const t = i18nInstance.getFixedT(lang);
-  const REF_RE = /\$t\(\s*([^)]+?)\s*\)/g;
-  (function walk(obj)
+//=========================================
+// EXPAND INLINE $t(...) REFERENCES IN A BUNDLE
+// SUPPORTS:
+// - $t(general:terms.staff)
+// - $t('general:terms.staff')
+// - $t("general:terms.staff")
+// - MULTIPLE REFERENCES IN ONE STRING
+// NOTE:THIS IS CUSTOM CONVENTION (NOT UI BAKERY DOC FEATURE)
+//=========================================
+
+function expandInlineRefsForLang(i18n, lang, bundle)
   {
-    for (const k of Object.keys(obj || {}))
-    {
-      const v = obj[k];
-      if (v && typeof v === 'object' && !Array.isArray(v)) { walk(v); continue; }
-      if (typeof v === 'string' && v.includes('$t('))
+    //HANDLE PRIMITIVES FAST
+    if (bundle == null)
       {
-        let prev, curr = v;
-        for (let i = 0; i < 5; i++)
-        {
-          prev = curr;
-          curr = curr.replace(REF_RE, function(_m, key)
-          {
-            return t(String(key || '').trim(), { interpolation:{ skipOnVariables:true } });
-          });
-          if (curr === prev) { break; }
-        }
-        obj[k] = curr;
+        return bundle;
       }
-    }
-  })(tree);
-  return tree;
-}
+
+    //RECURSIVE WALK
+    const walk = (node) =>
+      {
+        //ARRAY
+        if (Array.isArray(node))
+          {
+            return node.map(item => walk(item));
+          }
+
+        //OBJECT
+        if (typeof node === 'object')
+          {
+            const out = {};
+            for (const k of Object.keys(node))
+              {
+                out[k] = walk(node[k]);
+              }
+            return out;
+          }
+
+        //STRING:REPLACE $t(...)
+        if (typeof node === 'string')
+          {
+            //MATCH $t(...) WITH OPTIONAL QUOTES INSIDE
+            //CAPTURES KEY IN GROUP 1
+            const re = /\$t\(\s*(?:'([^']+)'|"([^"]+)"|([^)\s]+))\s*\)/g;
+
+            return node.replace(re, (_m, g1, g2, g3) =>
+              {
+                const key = (g1 || g2 || g3 || '').trim();
+
+                if (!key)
+                  {
+                    return _m;
+                  }
+
+                //RESOLVE USING SPECIFIC LANGUAGE
+                //NOTE:ASSUMES RESOURCES HAVE BEEN ADDED BEFORE THIS RUNS
+                return i18n.t(key, { lng: lang });
+              });
+          }
+
+        //OTHER PRIMITIVES
+        return node;
+      };
+
+    return walk(bundle);
+  }
+
 
 //================== AUTO-CASE(EN: TITLE CASE, ES: SENTENCE CASE) ==================
 function titleCaseEN(s)
