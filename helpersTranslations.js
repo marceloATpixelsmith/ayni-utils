@@ -184,3 +184,28 @@ function processBundle(i18nInstance, srcBundle, opts)
   }
   return { en:enTree, es:esTree };
 }
+
+
+//=========================================
+// GET BROWSER LOCALE (EN/ES ONLY)
+// RETURNS "en" OR "es"
+//=========================================
+function getBrowserLocale()
+{
+  const nav = (typeof navigator !== 'undefined') ? navigator : null;
+
+  const raw =
+    (
+      nav?.language
+      || (Array.isArray(nav?.languages) && nav.languages[0])
+      || ''
+    )
+      .toString()
+      .trim()
+      .toLowerCase();
+
+  //HANDLE "es-MX" ETC
+  const two = raw.slice(0, 2);
+
+  return (two === 'es') ? 'es' : 'en';
+}
