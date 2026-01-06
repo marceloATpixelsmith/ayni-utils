@@ -211,29 +211,46 @@ function getBrowserLocale()
 }
 
 //=========================================
-// NORMALIZE LOCALE (EN/ES ONLY)
-// RETURNS "en" OR "es"
+// NORMALIZE LOCALE TO SUPPORTED APP LOCALES
+// SUPPORTS: en, es
 //=========================================
+
 function normalizeLocale(raw)
-{
-  const v =
-    (raw ?? '')
+  {
+    //HANDLE NULL/UNDEFINED/EMPTY
+    const s =
+    (
+      raw ?? ''
+    )
       .toString()
-      .trim()
+      .trim();
+
+    if (!s)
+      {
+        return 'en';
+      }
+
+    //NORMALIZE SEPARATORS + CASE
+    //EXAMPLES:
+    //es-MX, es_419, ES-mx -> es-mx / es-419
+    const norm = s
+      .replace(/_/g, '-')
       .toLowerCase();
 
-  if (v === 'es')
-    {
-      return 'es';
-    }
+    //PRIMARY LANGUAGE SUBTAG
+    const primary = norm.split('-')[0];
 
-  if (v === 'en')
-    {
-      return 'en';
-    }
+    //ALLOWLIST
+    if (primary === 'es')
+      {
+        return 'es';
+      }
 
-  //HANDLE "es-MX" ETC
-  const two = v.slice(0, 2);
+    if (primary === 'en')
+      {
+        return 'en';
+      }
 
-  return (two === 'es') ? 'es' : 'en';
-}
+    //DEFAULT FALLBACK
+    return 'en';
+  }
