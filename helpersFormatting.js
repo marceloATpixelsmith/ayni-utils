@@ -3,15 +3,21 @@
 // HOW TO USE (UI Bakery):
 //   // Date only:
 //   formatDateLocal({{row.date}}, { locale: 'es-MX' })
+//   formatDateLocal({{row.date}}, { locale: 'en-US', dateStyle: 'pretty' }) //→"Saturday July 4th, 2026"
 //
 //   // Single date+time with required phrasing ("at"/"a"):
-//   formatDateTimeLocal({{row.start_at}}, { locale: 'en-US' })   // → "7/6/2025 at 5:00pm"
-//   formatDateTimeLocal({{row.start_at}}, { locale: 'es-MX' })   // → "6/7/2025 a 5:00pm"
+//   formatDateTimeLocal({{row.start_at}}, { locale: 'en-US' })                 //→"7/6/2025 at 5:00pm"
+//   formatDateTimeLocal({{row.start_at}}, { locale: 'es-MX' })                 //→"6/7/2025 a 5:00pm"
+//   formatDateTimeLocal({{row.start_at}}, { locale: 'en-US', dateStyle: 'pretty' }) //→"Saturday July 4th, 2026 at 5:00pm"
 //
 //   // Ranges:
 //   // same-day → EN "from 5:00pm - 7:00pm", ES "de 5:00pm a 7:00pm"
 //   formatDateRangeLocal({{row.start_at}}, {{row.end_at}}, { locale: 'en-US' })
 //   formatDateRangeLocal({{row.start_at}}, {{row.end_at}}, { locale: 'es-MX' })
+//
+//   // Ranges (PRETTY DATE STYLE):
+//   formatDateRangeLocal({{row.start_at}}, {{row.end_at}}, { locale: 'en-US', dateStyle: 'pretty' }) //→"Saturday July 4th, 2026 from 5:00pm - 7:00pm"
+//   formatDateRangeLocal({{row.start_at}}, {{row.end_at}}, { locale: 'es-MX', dateStyle: 'pretty' }) //→"Sábado 4 de julio de 2026 de 5:00pm a 7:00pm"
 //
 // NOTES
 // - No reads of `state`, `steps`, `actions`, or other reactive globals.
@@ -21,7 +27,6 @@
 // ========================
 // DEFAULTS (module scope)
 // ========================
-
 
 const _DEFAULT_LOCALE =
   (typeof navigator !== 'undefined' && navigator.language) || 'en-US';
@@ -58,6 +63,12 @@ function _ymdInTZ(ms, tz) {
   return y && m && d ? `${y}-${m}-${d}` : '';
 }
 
+function _capitalizeFirst(s) {
+  const txt = String(s || '');
+  if (!txt) return '';
+  return txt.charAt(0).toUpperCase() + txt.slice(1);
+}
+
 // ==========================
 // NUMERIC DATE "M/D/YYYY" or "D/M/YYYY"
 // ==========================
@@ -75,6 +86,73 @@ function _formatNumericDate(ms, locale, tz) {
   // For Spanish (es-*): D/M/YYYY; otherwise default EN: M/D/YYYY
   const isEs = /^es(-|$)/i.test(locale);
   return isEs ? `${d}/${m}/${y}` : `${m}/${d}/${y}`;
+}
+
+// ==========================
+// PRETTY DATE
+// EN: "Saturday July 4th, 2026"
+// ES: "Sábado 4 de julio de 2026"
+// ==========================
+
+function _ordinalSuffixEN(dayNum) {
+  const n = Number(dayNum);
+  if (!Number.isFinite(n)) return '';
+  const mod100 = n % 100;
+  if (mod100 >= 11 && mod100 <= 13) return 'th';
+  switch (n % 10) {
+    case 1: return 'st';
+    case 2: return 'nd';
+    case 3: return 'rd';
+    default: return 'th';
+  }
+}
+
+function _formatPrettyFull(ms, locale, tz) {
+  const isEs = /^es(-|$)/i.test(locale);
+
+  //GET WEEKDAY/MONTH/DAY/YEAR PARTS IN TARGET TZ
+  const key = `${locale}|${tz}|prettyFull`;
+  let dtf = _FMT_CACHE[key];
+  if (!dtf) {
+    dtf = Intl.DateTimeFormat(locale, {
+      timeZone: tz,
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+    _FMT_CACHE[key] = dtf;
+  }
+
+  const parts = dtf.formatToParts(ms);
+
+  let weekday = parts.find(p => p.type === 'weekday')?.value || '';
+  let month = parts.find(p => p.type === 'month')?.value || '';
+  const day = parts.find(p => p.type === 'day')?.value || '';
+  const year = parts.find(p => p.type === 'year')?.value || '';
+
+  //CAPITALIZE WEEKDAY (ES OFTEN COMES OUT LOWERCASE)
+  weekday = _capitalizeFirst(weekday);
+
+  //ES MONTHS ARE LOWERCASE BY CONVENTION; KEEP AS-IS
+  //EN MONTHS ARE TITLECASE BY DEFAULT IN MOST LOCALES; KEEP AS-IS
+
+  if (!weekday || !month || !day || !year) return '';
+
+  if (!isEs) {
+    //EN: "Saturday July 4th, 2026"
+    const suf = _ordinalSuffixEN(day);
+    return `${weekday} ${month} ${day}${suf}, ${year}`;
+  }
+
+  //ES: "Sábado 4 de julio de 2026"
+  return `${weekday} ${day} de ${month} de ${year}`;
+}
+
+function _formatDateByStyle(ms, locale, tz, dateStyle) {
+  return dateStyle === 'pretty'
+    ? _formatPrettyFull(ms, locale, tz)
+    : _formatNumericDate(ms, locale, tz);
 }
 
 // ===============================
@@ -133,17 +211,19 @@ function formatTimeCompact(input, options = {}) {
 /**
  * formatDateLocal(input, options?)
  * → "7/6/2025" (en) | "6/7/2025" (es)
+ * → (OPTIONAL) "Saturday July 4th, 2026" | "Sábado 4 de julio de 2026" WITH { dateStyle:'pretty' }
  */
 function formatDateLocal(input, options = {}) {
   if (input == null || input === '') return '';
 
   const locale = options.locale  || _DEFAULT_LOCALE;
   const tz     = options.timeZone || _DEFAULT_TZ;
+  const dateStyle = options.dateStyle || 'numeric';
 
   const ms = _toEpochMs(input);
   if (ms == null) return '';
 
-  return _formatNumericDate(ms, locale, tz);
+  return _formatDateByStyle(ms, locale, tz, dateStyle);
 }
 
 // ===============================
@@ -154,17 +234,19 @@ function formatDateLocal(input, options = {}) {
  * formatDateTimeLocal(input, options?)
  * EN → "7/6/2025 at 5:00pm"
  * ES → "6/7/2025 a 5:00pm"
+ * PRETTY DATE (OPTION): "Saturday July 4th, 2026 at 5:00pm" | "Sábado 4 de julio de 2026 a 5:00pm"
  */
 function formatDateTimeLocal(input, options = {}) {
   if (input == null || input === '') return '';
 
   const locale = options.locale  || _DEFAULT_LOCALE;
   const tz     = options.timeZone || _DEFAULT_TZ;
+  const dateStyle = options.dateStyle || 'numeric';
 
   const ms = _toEpochMs(input);
   if (ms == null) return '';
 
-  const dateStr = _formatNumericDate(ms, locale, tz);
+  const dateStr = _formatDateByStyle(ms, locale, tz, dateStyle);
   const timeStr = formatTimeCompact(ms, { locale, timeZone: tz });
 
   const isEs = /^es(-|$)/i.test(locale);
@@ -179,19 +261,31 @@ function formatDateTimeLocal(input, options = {}) {
 /**
  * formatDateRangeLocal(startInput, endInput, options?)
  *
+ * OPTIONS:
+ *   - dateStyle: 'numeric' | 'pretty'   (DEFAULT 'numeric')
+ *
  * Same-day (calendar day in tz):
  *   EN → "7/6/2025 from 5:00pm - 7:00pm"
  *   ES → "6/7/2025 de 5:00pm a 7:00pm"
  *
+ * Same-day (PRETTY):
+ *   EN → "Saturday July 4th, 2026 from 5:00pm - 7:00pm"
+ *   ES → "Sábado 4 de julio de 2026 de 5:00pm a 7:00pm"
+ *
  * Different days:
  *   EN → "6/7/2025 at 5:00pm to 7/7/2025 at 6:00am"
  *   ES → "7/6/2025 a las 5:00pm al 7/7/2025 a las 6:00am"
+ *
+ * Different days (PRETTY):
+ *   EN → "Saturday July 4th, 2026 at 5:00pm to Sunday July 5th, 2026 at 6:00am"
+ *   ES → "Sábado 4 de julio de 2026 a las 5:00pm al Domingo 5 de julio de 2026 a las 6:00am"
  */
 function formatDateRangeLocal(startInput, endInput, options = {}) {
   if (!startInput || !endInput) return '';
 
   const locale = options.locale  || _DEFAULT_LOCALE;
   const tz     = options.timeZone || _DEFAULT_TZ;
+  const dateStyle = options.dateStyle || 'numeric';
 
   const startMs = _toEpochMs(startInput);
   const endMs   = _toEpochMs(endInput);
@@ -200,24 +294,26 @@ function formatDateRangeLocal(startInput, endInput, options = {}) {
   const sameDay = _ymdInTZ(startMs, tz) === _ymdInTZ(endMs, tz);
   const isEs    = /^es(-|$)/i.test(locale);
 
-  const sDate = _formatNumericDate(startMs, locale, tz);
-  const eDate = _formatNumericDate(endMs,   locale, tz);
+  const sDate = _formatDateByStyle(startMs, locale, tz, dateStyle);
+  const eDate = _formatDateByStyle(endMs,   locale, tz, dateStyle);
   const sTime = formatTimeCompact(startMs, { locale, timeZone: tz });
   const eTime = formatTimeCompact(endMs,   { locale, timeZone: tz });
 
   if (sameDay) {
     if (isEs) {
-      // "6/7/2025 de 5:00pm a 7:00pm"
+      // "6/7/2025 de 5:00pm a 7:00pm" OR "Sábado 4 de julio de 2026 de 5:00pm a 7:00pm"
       return `${sDate} de ${sTime} a ${eTime}`;
     }
-    // EN: "7/6/2025 from 5:00pm - 7:00pm"
+    // EN: "7/6/2025 from 5:00pm - 7:00pm" OR "Saturday July 4th, 2026 from 5:00pm - 7:00pm"
     return `${sDate} from ${sTime} - ${eTime}`;
   } else {
     if (isEs) {
       // "7/6/2025 a las 5:00pm al 7/7/2025 a las 6:00am"
+      // OR "Sábado 4 de julio de 2026 a las 5:00pm al Domingo 5 de julio de 2026 a las 6:00am"
       return `${sDate} a las ${sTime} al ${eDate} a las ${eTime}`;
     }
     // EN: "6/7/2025 at 5:00pm to 7/7/2025 at 6:00am"
+    // OR "Saturday July 4th, 2026 at 5:00pm to Sunday July 5th, 2026 at 6:00am"
     return `${sDate} at ${sTime} to ${eDate} at ${eTime}`;
   }
 }
