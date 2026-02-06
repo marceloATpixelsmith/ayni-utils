@@ -1,119 +1,222 @@
 /* utils_case.js
-   Locale-aware case helpers for UI Bakery + i18next.
-   All functions accept an optional `locale`. If omitted, they’ll use `i18n.language` (if present) or 'en'.
+   LOCALE-AWARE CASE HELPERS FOR UI BAKERY + I18NEXT.
+   FUNCTIONS:
+   -upper:       ALL CAPS
+   -lower:       all lowercase
+   -cap:         Capitalize first letter only (does NOT lowercase rest)
+   -title:       Title Case (WORD-BY-WORD), WITH APOSTROPHE-SAFE TOKENIZING
+   -sentence:    Sentence case (LOWERCASE ALL, THEN CAPITALIZE FIRST LETTER FOUND)
+   -apply:       APPLY A NAMED STYLE
+   -caseOf:      MATCH CASING OF A REFERENCE STRING
 */
 
-
-const CASE = (() => {
+const CASE = (() =>
+{
   const getLng = (lng) =>
     lng || (typeof i18n !== 'undefined' && i18n.language) || 'en';
 
   const toStr = (v) => (v == null ? '' : String(v));
 
-  function upper(value, locale) {
+  function upper(value, locale)
+  {
     const lng = getLng(locale);
     return toStr(value).toLocaleUpperCase(lng);
   }
 
-  function lower(value, locale) {
+  function lower(value, locale)
+  {
     const lng = getLng(locale);
     return toStr(value).toLocaleLowerCase(lng);
   }
 
-  // Capitalize first letter only: "evento" -> "Evento"
-  function cap(value, locale) {
+  //CAPITALIZE FIRST CHARACTER ONLY (DOES NOT FORCE LOWERCASE ON THE REST)
+  //EX: "eVENTO" -> "EVENTO"
+  function cap(value, locale)
+  {
     const lng = getLng(locale);
     const s = toStr(value);
-    if (!s) return s;
+
+    if (!s)
+    {
+      return s;
+    }
+
     return s.charAt(0).toLocaleUpperCase(lng) + s.slice(1);
   }
 
-  // Title case (Unicode-aware). Options:
-  // - preserveAcronyms: keep ALL-CAPS words as is (default true)
-  // - smallWords: keep common short words lowercased (en/es) except at start/end (default false)
-  // Title case (Unicode-aware).
-// Options:
-// - preserveAcronyms: keep ALL-CAPS words as is (default true)
-// - smallWords: keep common short words lowercased (en/es) except at start/end (default true)
-function title(value, locale, opts = {}) {
-  const lng = getLng(locale);
-  const s = toStr(value);
-  if (!s) return s;
+  //SENTENCE CASE:
+  //- LOWERCASE THE ENTIRE STRING
+  //- CAPITALIZE THE FIRST LETTER FOUND (SKIPPING LEADING SPACES/PUNCTUATION)
+  //EX: "don't DO THIS" -> "Don't do this"
+  //EX: "¿QUÉ ES ESTO?" -> "¿Qué es esto?"
+  function sentence(value, locale)
+  {
+    const lng = getLng(locale);
+    const s = toStr(value);
 
-  const { preserveAcronyms = true, smallWords = true } = opts;
+    if (!s)
+    {
+      return s;
+    }
 
-  const SMALL_EN = new Set([
-    'a','an','the','and','or','for','nor','but','of','on','in','to','at','by','as','per','via'
-  ]);
-  const SMALL_ES = new Set([
-    'y','o','u','de','del','al','la','las','el','los','en','con','sin','para','por','a'
-  ]);
+    const lowerAll = s.toLocaleLowerCase(lng);
 
-  const smallSet = smallWords
-    ? (lng.startsWith('es') ? SMALL_ES : SMALL_EN)
-    : null;
+    //FIND FIRST LETTER AFTER ANY LEADING NON-LETTERS
+    const m = lowerAll.match(/^[^\p{L}]*(\p{L})/u);
 
-  const parts = s.split(/(\P{L}+)/u); // keep delimiters
-  const wordIdxs = [];
-  for (let i = 0; i < parts.length; i++) {
-    const chunk = parts[i];
-    if (chunk && !/\P{L}+/u.test(chunk)) wordIdxs.push(i);
+    if (!m)
+    {
+      return lowerAll;
+    }
+
+    //m[0] INCLUDES LEADING NON-LETTERS + FIRST LETTER, SO INDEX OF FIRST LETTER IS m[0].length - 1
+    const firstLetterIndex = m[0].length - 1;
+
+    return (
+      lowerAll.slice(0, firstLetterIndex) +
+      lowerAll.charAt(firstLetterIndex).toLocaleUpperCase(lng) +
+      lowerAll.slice(firstLetterIndex + 1)
+    );
   }
 
-  let seenWords = 0;
+  //TITLE CASE (UNICODE-AWARE) WITH APOSTROPHE-SAFE WORD TOKENIZING.
+  //OPTIONS:
+  //-preserveAcronyms: KEEP ALL-CAPS WORDS AS IS (DEFAULT TRUE)
+  //-smallWords: KEEP COMMON SHORT WORDS LOWERCASED (EN/ES) EXCEPT AT START (DEFAULT TRUE)
+  function title(value, locale, opts = {})
+  {
+    const lng = getLng(locale);
+    const s = toStr(value);
 
-  const out = parts.map((chunk) => {
-    if (!chunk || /\P{L}+/u.test(chunk)) return chunk;
-
-    const isFirst = seenWords === 0;
-    seenWords++;
-
-    if (preserveAcronyms && chunk.length > 1 &&
-        chunk === chunk.toLocaleUpperCase(lng)) {
-      return chunk;
+    if (!s)
+    {
+      return s;
     }
 
-    const lowerChunk = chunk.toLocaleLowerCase(lng);
+    const { preserveAcronyms = true, smallWords = true } = opts;
 
-    // NEW RULE: keep small words lowercase everywhere EXCEPT the very first word
-    if (smallSet && !isFirst && smallSet.has(lowerChunk)) {
-      return lowerChunk;
+    const SMALL_EN = new Set([
+      'a','an','the','and','or','for','nor','but','of','on','in','to','at','by','as','per','via'
+    ]);
+
+    const SMALL_ES = new Set([
+      'y','o','u','de','del','al','la','las','el','los','en','con','sin','para','por','a'
+    ]);
+
+    const smallSet = smallWords
+      ? (lng.startsWith('es') ? SMALL_ES : SMALL_EN)
+      : null;
+
+    //TOKENIZE INTO "WORD" VS "DELIMITERS"
+    //WORD TOKEN ALLOWS INTERNAL APOSTROPHES: "don't", "l'amour", "rock’n’roll"
+    //INCLUDES STRAIGHT AND CURLY APOSTROPHES: ' AND ’
+    const TOKENS_RE = /(\p{L}+(?:['’]\p{L}+)*)|([^\p{L}]+)/gu;
+
+    const tokens = [];
+    for (const m of s.matchAll(TOKENS_RE))
+    {
+      tokens.push(m[1] || m[2] || '');
     }
 
-    return chunk[0].toLocaleUpperCase(lng) + chunk.slice(1).toLocaleLowerCase(lng);
-  });
+    let seenWords = 0;
 
-  return out.join('');
-}
+    const out = tokens.map((chunk) =>
+    {
+      //PASS THROUGH NON-WORD TOKENS
+      if (!chunk || !/^\p{L}/u.test(chunk))
+      {
+        return chunk;
+      }
 
+      const isFirst = seenWords === 0;
+      seenWords++;
 
+      //PRESERVE ACRONYMS / ALL-CAPS WORDS
+      if (preserveAcronyms && chunk.length > 1 &&
+          chunk === chunk.toLocaleUpperCase(lng))
+      {
+        return chunk;
+      }
 
-  // Apply a named style: 'upper' | 'lower' | 'cap' | 'title'
-  function apply(value, style, locale, options) {
-    switch ((style || '').toLowerCase()) {
-      case 'upper': return upper(value, locale);
-      case 'lower': return lower(value, locale);
-      case 'cap':   return cap(value, locale);
-      case 'title': return title(value, locale, options);
-      default:      return toStr(value);
+      const lowerChunk = chunk.toLocaleLowerCase(lng);
+
+      //KEEP SMALL WORDS LOWERCASE EXCEPT THE FIRST WORD
+      if (smallSet && !isFirst && smallSet.has(lowerChunk))
+      {
+        return lowerChunk;
+      }
+
+      //STANDARD TITLE-CASE FOR THIS TOKEN
+      return chunk[0].toLocaleUpperCase(lng) + chunk.slice(1).toLocaleLowerCase(lng);
+    });
+
+    return out.join('');
+  }
+
+  //APPLY A NAMED STYLE:
+  //'upper' | 'lower' | 'cap' | 'title' | 'sentence'
+  function apply(value, style, locale, options)
+  {
+    switch ((style || '').toLowerCase())
+    {
+      case 'upper':
+        return upper(value, locale);
+
+      case 'lower':
+        return lower(value, locale);
+
+      case 'cap':
+        return cap(value, locale);
+
+      case 'title':
+        return title(value, locale, options);
+
+      case 'sentence':
+        return sentence(value, locale);
+
+      default:
+        return toStr(value);
     }
   }
 
-  // Match the casing of a reference string (handy when you want "Event"/"EVENT"/"event" to follow UI context)
-  function caseOf(reference, value, locale) {
+  //MATCH THE CASING OF A REFERENCE STRING
+  //-IF REFERENCE IS ALL UPPER -> upper()
+  //-IF REFERENCE IS ALL LOWER -> lower()
+  //-IF REFERENCE LOOKS LIKE "Cap" -> cap()
+  //-ELSE -> title()
+  function caseOf(reference, value, locale)
+  {
+    const lng = getLng(locale);
     const ref = toStr(reference);
-    if (!ref) return toStr(value);
-    const isUpper = ref === ref.toLocaleUpperCase(getLng(locale));
-    const isLower = ref === ref.toLocaleLowerCase(getLng(locale));
-    // crude "Cap" check: first letter upper, rest not all caps
+
+    if (!ref)
+    {
+      return toStr(value);
+    }
+
+    const isUpper = ref === ref.toLocaleUpperCase(lng);
+    const isLower = ref === ref.toLocaleLowerCase(lng);
+
     const isCap = !isUpper && !isLower && /^[\p{L}]/u.test(ref) &&
-                  ref[0] === ref[0].toLocaleUpperCase(getLng(locale));
-    if (isUpper) return upper(value, locale);
-    if (isLower) return lower(value, locale);
-    if (isCap)   return cap(value, locale);
-    // default to title if mixed
+                  ref[0] === ref[0].toLocaleUpperCase(lng);
+
+    if (isUpper)
+    {
+      return upper(value, locale);
+    }
+
+    if (isLower)
+    {
+      return lower(value, locale);
+    }
+
+    if (isCap)
+    {
+      return cap(value, locale);
+    }
+
     return title(value, locale);
   }
 
-  return { upper, lower, cap, title, apply, caseOf };
+  return { upper, lower, cap, title, sentence, apply, caseOf };
 })();
