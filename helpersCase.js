@@ -5,7 +5,7 @@
    -lower:       all lowercase
    -cap:         Capitalize first letter only (does NOT lowercase rest)
    -title:       Title Case (WORD-BY-WORD), WITH APOSTROPHE-SAFE TOKENIZING
-   -sentence:    Sentence case (LOWERCASE ALL, THEN CAPITALIZE FIRST LETTER FOUND)
+   -sentence:    Sentence case (LOWERCASE ALL, THEN CAPITALIZE FIRST LETTER OF EACH SENTENCE)
    -apply:       APPLY A NAMED STYLE
    -caseOf:      MATCH CASING OF A REFERENCE STRING
 */
@@ -44,11 +44,15 @@ const CASE = (() =>
     return s.charAt(0).toLocaleUpperCase(lng) + s.slice(1);
   }
 
-  //SENTENCE CASE:
+  //SENTENCE CASE (MULTI-SENTENCE):
   //- LOWERCASE THE ENTIRE STRING
-  //- CAPITALIZE THE FIRST LETTER FOUND (SKIPPING LEADING SPACES/PUNCTUATION)
-  //EX: "don't DO THIS" -> "Don't do this"
-  //EX: "¿QUÉ ES ESTO?" -> "¿Qué es esto?"
+  //- CAPITALIZE THE FIRST LETTER OF THE STRING
+  //- ALSO CAPITALIZE THE FIRST LETTER AFTER SENTENCE ENDERS: . ! ? … (AND NEWLINES)
+  //
+  //NOTES:
+  //- THIS IS A HEURISTIC. IT WILL ALSO CAPITALIZE AFTER "DR." / "E.G." IF PRESENT.
+  //- IT SKIPS ANY NON-LETTER CHARACTERS BETWEEN THE SENTENCE ENDER AND THE NEXT LETTER
+  //  (SPACES, QUOTES, PARENS, ETC.)
   function sentence(value, locale)
   {
     const lng = getLng(locale);
@@ -61,21 +65,15 @@ const CASE = (() =>
 
     const lowerAll = s.toLocaleLowerCase(lng);
 
-    //FIND FIRST LETTER AFTER ANY LEADING NON-LETTERS
-    const m = lowerAll.match(/^[^\p{L}]*(\p{L})/u);
-
-    if (!m)
-    {
-      return lowerAll;
-    }
-
-    //m[0] INCLUDES LEADING NON-LETTERS + FIRST LETTER, SO INDEX OF FIRST LETTER IS m[0].length - 1
-    const firstLetterIndex = m[0].length - 1;
-
-    return (
-      lowerAll.slice(0, firstLetterIndex) +
-      lowerAll.charAt(firstLetterIndex).toLocaleUpperCase(lng) +
-      lowerAll.slice(firstLetterIndex + 1)
+    //CAPITALIZE FIRST LETTER AT START, AND AFTER SENTENCE ENDERS / NEWLINES.
+    //GROUPS:
+    //1) START OR SENTENCE ENDER(S) OR NEWLINE(S)
+    //2) ANY NON-LETTER "GAP" (SPACES/QUOTES/PARENS/etc.)
+    //3) THE FIRST LETTER TO CAPITALIZE
+    return lowerAll.replace(
+      /(^|[.!?…]+|[\r\n]+)([^\p{L}]*)?(\p{L})/gu,
+      (m, boundary, gap, letter) =>
+        boundary + (gap || '') + letter.toLocaleUpperCase(lng)
     );
   }
 
