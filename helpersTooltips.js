@@ -1,13 +1,17 @@
-//GLOBAL REUSABLE TOOLTIP FUNCTION
+//GLOBAL REUSABLE TOOLTIP FUNCTION WITH ORIENTATION
 window.attachTooltip =
-    function(targetClass, tooltipText)
+    function(targetClass, tooltipText, orientation)
     {
         if (!targetClass || !tooltipText)
         {
             return;
         }
 
-        //ENSURE CSS IS INJECTED ONLY ONCE
+        //DEFAULT ORIENTATION
+        const position =
+            orientation || 'top';
+
+        //INJECT CSS ONLY ONCE
         if (!document.getElementById('global-tooltip-style'))
         {
             const style =
@@ -26,9 +30,6 @@ window.attachTooltip =
             {
                 content: attr(data-tooltip);
                 position: absolute;
-                bottom: 130%;
-                left: 50%;
-                transform: translateX(-50%);
                 background: #222;
                 color: #ffffff;
                 padding: 6px 10px;
@@ -41,6 +42,38 @@ window.attachTooltip =
                 z-index: 9999;
             }
 
+            /* TOP */
+            [data-tooltip-position="top"]::after
+            {
+                bottom: 130%;
+                left: 50%;
+                transform: translateX(-50%);
+            }
+
+            /* BOTTOM */
+            [data-tooltip-position="bottom"]::after
+            {
+                top: 130%;
+                left: 50%;
+                transform: translateX(-50%);
+            }
+
+            /* LEFT */
+            [data-tooltip-position="left"]::after
+            {
+                right: 130%;
+                top: 50%;
+                transform: translateY(-50%);
+            }
+
+            /* RIGHT */
+            [data-tooltip-position="right"]::after
+            {
+                left: 130%;
+                top: 50%;
+                transform: translateY(-50%);
+            }
+
             [data-tooltip]:hover::after
             {
                 opacity: 1;
@@ -50,13 +83,13 @@ window.attachTooltip =
             document.head.appendChild(style);
         }
 
-        //APPLY TO ALL MATCHING ELEMENTS
         const elements =
             document.querySelectorAll('.' + targetClass);
 
         elements.forEach(function(el)
         {
             el.setAttribute('data-tooltip', tooltipText);
+            el.setAttribute('data-tooltip-position', position);
             el.style.cursor = 'pointer';
         });
     };
