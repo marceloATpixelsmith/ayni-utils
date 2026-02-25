@@ -3,24 +3,24 @@
 // HOW TO USE (UI Bakery):
 //
 // DATE ONLY
-// formatDateLocal({{row.date}}, { locale: 'en-US' })
-// formatDateLocal({{row.date}}, { locale: 'es-MX' })
+// formatDateLocal({{row.date}}, { locale: 'en' })
+// formatDateLocal({{row.date}}, { locale: 'es' })
 //
 // PRETTY (NO WEEKDAY)
-// formatDateLocal({{row.date}}, { locale: 'en-US', dateStyle: 'pretty' })
+// formatDateLocal({{row.date}}, { locale: 'en', dateStyle: 'pretty' })
 // → "July 4th, 2026"
-// formatDateLocal({{row.date}}, { locale: 'es-MX', dateStyle: 'pretty' })
+// formatDateLocal({{row.date}}, { locale: 'es', dateStyle: 'pretty' })
 // → "4 de julio de 2026"
 //
 // PRETTY WITH WEEKDAY
-// formatDateLocal({{row.date}}, { locale: 'en-US', dateStyle: 'prettyDay' })
+// formatDateLocal({{row.date}}, { locale: 'en', dateStyle: 'prettyDay' })
 // → "Saturday July 4th, 2026"
-// formatDateLocal({{row.date}}, { locale: 'es-MX', dateStyle: 'prettyDay' })
+// formatDateLocal({{row.date}}, { locale: 'es', dateStyle: 'prettyDay' })
 // → "Sábado 4 de julio de 2026"
 //
 // NOTES
 // - dateStyle: 'numeric' | 'pretty' | 'prettyDay'
-// - No reads of state/steps/actions
+// - Locale passed in can be 'en'/'es' OR full tags like 'en-US'/'es-MX'
 // - Locale & TZ only from options or browser
 // - Intl formatters cached
 
@@ -76,6 +76,35 @@ function _capitalizeFirst(s)
     return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
+//NORMALIZE LOCALE INPUT
+//ACCEPTS: 'en' | 'es' | 'en-US' | 'es-MX' | ETC
+//DEFAULTS: en -> en-US, es -> es-MX
+function _normalizeLocale(locale)
+{
+    const raw =
+        String(locale || _DEFAULT_LOCALE || 'en-US')
+            .trim();
+
+    const base =
+        raw.toLowerCase();
+
+    if (base === 'en') return 'en-US';
+    if (base === 'es') return 'es-MX';
+
+    //IF USER PASSES 'en_US' STYLE, NORMALIZE TO BCP-47
+    if (raw.indexOf('_') !== -1)
+    {
+        return raw.replace(/_/g, '-');
+    }
+
+    return raw;
+}
+
+function _isEsLocale(locale)
+{
+    return /^es(-|$)/i.test(locale);
+}
+
 // ==========================
 // NUMERIC DATE
 // ==========================
@@ -95,7 +124,7 @@ function _formatNumericDate(ms, locale, tz)
 
     if (!y || !m || !d) return '';
 
-    const isEs = /^es(-|$)/i.test(locale);
+    const isEs = _isEsLocale(locale);
     return isEs ? `${d}/${m}/${y}` : `${m}/${d}/${y}`;
 }
 
@@ -121,7 +150,7 @@ function _ordinalSuffixEN(n)
 // ES: "4 de julio de 2026"
 function _formatPretty(ms, locale, tz)
 {
-    const isEs = /^es(-|$)/i.test(locale);
+    const isEs = _isEsLocale(locale);
 
     const key = `${locale}|${tz}|pretty`;
     let dtf = _FMT_CACHE[key];
@@ -156,7 +185,7 @@ function _formatPretty(ms, locale, tz)
 // ES: "Sábado 4 de julio de 2026"
 function _formatPrettyDay(ms, locale, tz)
 {
-    const isEs = /^es(-|$)/i.test(locale);
+    const isEs = _isEsLocale(locale);
 
     const key = `${locale}|${tz}|prettyDay`;
     let dtf = _FMT_CACHE[key];
@@ -206,7 +235,7 @@ function formatTimeCompact(input, options = {})
 {
     if (input == null || input === '') return '';
 
-    const locale = options.locale || _DEFAULT_LOCALE;
+    const locale = _normalizeLocale(options.locale || _DEFAULT_LOCALE);
     const tz = options.timeZone || _DEFAULT_TZ;
 
     const ms = _toEpochMs(input);
@@ -244,7 +273,7 @@ function formatDateLocal(input, options = {})
 {
     if (input == null || input === '') return '';
 
-    const locale = options.locale || _DEFAULT_LOCALE;
+    const locale = _normalizeLocale(options.locale || _DEFAULT_LOCALE);
     const tz = options.timeZone || _DEFAULT_TZ;
     const dateStyle = options.dateStyle || 'numeric';
 
@@ -258,7 +287,7 @@ function formatDateTimeLocal(input, options = {})
 {
     if (input == null || input === '') return '';
 
-    const locale = options.locale || _DEFAULT_LOCALE;
+    const locale = _normalizeLocale(options.locale || _DEFAULT_LOCALE);
     const tz = options.timeZone || _DEFAULT_TZ;
     const dateStyle = options.dateStyle || 'numeric';
 
@@ -268,7 +297,7 @@ function formatDateTimeLocal(input, options = {})
     const dateStr = _formatDateByStyle(ms, locale, tz, dateStyle);
     const timeStr = formatTimeCompact(ms, { locale, timeZone: tz });
 
-    const isEs = /^es(-|$)/i.test(locale);
+    const isEs = _isEsLocale(locale);
     return isEs ? `${dateStr} a ${timeStr}` : `${dateStr} at ${timeStr}`;
 }
 
@@ -276,7 +305,7 @@ function formatDateRangeLocal(startInput, endInput, options = {})
 {
     if (!startInput || !endInput) return '';
 
-    const locale = options.locale || _DEFAULT_LOCALE;
+    const locale = _normalizeLocale(options.locale || _DEFAULT_LOCALE);
     const tz = options.timeZone || _DEFAULT_TZ;
     const dateStyle = options.dateStyle || 'numeric';
 
@@ -285,7 +314,7 @@ function formatDateRangeLocal(startInput, endInput, options = {})
     if (startMs == null || endMs == null) return '';
 
     const sameDay = _ymdInTZ(startMs, tz) === _ymdInTZ(endMs, tz);
-    const isEs = /^es(-|$)/i.test(locale);
+    const isEs = _isEsLocale(locale);
 
     const sDate = _formatDateByStyle(startMs, locale, tz, dateStyle);
     const eDate = _formatDateByStyle(endMs, locale, tz, dateStyle);
