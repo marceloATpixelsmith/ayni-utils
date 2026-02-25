@@ -1,4 +1,4 @@
-//UI BAKERY-LIKE TOOLTIP (FLOATING, WITH ARROW, ORIENTATION SUPPORT)
+//UI BAKERY-LIKE FLOATING TOOLTIP (NO ATTRIBUTES REQUIRED)
 window.attachTooltip =
     function(className, tooltipText, orientation)
     {
@@ -12,7 +12,16 @@ window.attachTooltip =
                 .toLowerCase()
                 .trim();
 
-        //INJECT STYLES ONCE
+        //REMOVE OLDER TOOLTIP STYLE TAGS FROM PREVIOUS ATTEMPTS (BLACK BUBBLE CSS)
+        const oldTooltipStyles =
+            document.querySelectorAll('style[data-tooltip-style="true"], style#global-tooltip-style');
+
+        oldTooltipStyles.forEach(function(node)
+        {
+            node.parentNode.removeChild(node);
+        });
+
+        //INJECT UI BAKERY-LIKE STYLES ONCE
         if (!document.getElementById("ub_like_tooltip_style"))
         {
             const style =
@@ -39,7 +48,6 @@ window.attachTooltip =
                     pointer-events: none;
                 }
 
-                /*ARROW BASE*/
                 .ub-like-tooltip::after
                 {
                     content: "";
@@ -51,7 +59,6 @@ window.attachTooltip =
                     transform: rotate(45deg);
                 }
 
-                /*TOP ARROW (POINTS DOWN)*/
                 .ub-like-tooltip.pos-top::after
                 {
                     bottom: -7px;
@@ -61,7 +68,6 @@ window.attachTooltip =
                     border-top: none;
                 }
 
-                /*BOTTOM ARROW (POINTS UP)*/
                 .ub-like-tooltip.pos-bottom::after
                 {
                     top: -7px;
@@ -71,7 +77,6 @@ window.attachTooltip =
                     border-bottom: none;
                 }
 
-                /*LEFT ARROW (POINTS RIGHT)*/
                 .ub-like-tooltip.pos-left::after
                 {
                     right: -7px;
@@ -81,7 +86,6 @@ window.attachTooltip =
                     border-bottom: none;
                 }
 
-                /*RIGHT ARROW (POINTS LEFT)*/
                 .ub-like-tooltip.pos-right::after
                 {
                     left: -7px;
@@ -95,20 +99,20 @@ window.attachTooltip =
             document.head.appendChild(style);
         }
 
-        //CREATE SINGLETON TOOLTIP NODE ONCE
-        if (!document.getElementById("ub_like_tooltip"))
+        //CREATE SINGLE TOOLTIP NODE ONCE
+        let tooltipEl =
+            document.getElementById("ub_like_tooltip");
+
+        if (!tooltipEl)
         {
-            const tip =
+            tooltipEl =
                 document.createElement("div");
 
-            tip.id = "ub_like_tooltip";
-            tip.className = "ub-like-tooltip pos-top";
+            tooltipEl.id = "ub_like_tooltip";
+            tooltipEl.className = "ub-like-tooltip pos-top";
 
-            document.body.appendChild(tip);
+            document.body.appendChild(tooltipEl);
         }
-
-        const tooltipEl =
-            document.getElementById("ub_like_tooltip");
 
         const setPositionClass =
             function(pos)
@@ -141,7 +145,6 @@ window.attachTooltip =
 
                 tooltipEl.style.display = "block";
 
-                //MEASURE AFTER DISPLAY
                 const rect =
                     targetEl.getBoundingClientRect();
 
@@ -174,12 +177,11 @@ window.attachTooltip =
                 }
                 else
                 {
-                    //TOP
                     left = rect.left + (rect.width / 2) - (tipRect.width / 2);
                     top = rect.top - tipRect.height - gap;
                 }
 
-                //KEEP WITHIN VIEWPORT
+                //CLAMP TO VIEWPORT
                 const pad =
                     8;
 
@@ -213,18 +215,28 @@ window.attachTooltip =
                 tooltipEl.style.display = "none";
             };
 
-        //BIND TO ALL MATCHING ELEMENTS (IDEMPOTENT)
+        //BIND TO ELEMENTS BY CLASS (NO ATTRIBUTES)
         const els =
             document.querySelectorAll("." + className);
 
         els.forEach(function(el)
         {
-            if (el.getAttribute("data-ub-tooltip-bound") === "true")
+            //HARD-KILL NATIVE TOOLTIP IF IT EXISTS ON CHILDREN (SVG/NB-ICON SOMETIMES GETS TITLE)
+            const titled =
+                el.querySelectorAll("[title]");
+
+            titled.forEach(function(t)
+            {
+                t.removeAttribute("title");
+            });
+
+            //PREVENT DOUBLE BINDING
+            if (el.__ubTooltipBound === true)
             {
                 return;
             }
 
-            el.setAttribute("data-ub-tooltip-bound", "true");
+            el.__ubTooltipBound = true;
             el.style.cursor = "pointer";
 
             el.addEventListener("mouseenter", function()
