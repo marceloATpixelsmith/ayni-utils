@@ -1,4 +1,4 @@
-//GLOBAL REUSABLE TOOLTIP FUNCTION WITH ORIENTATION (FORCES CSS UPDATE)
+//GLOBAL REUSABLE TOOLTIP FUNCTION WITH ORIENTATION (BULLETPROOF)
 window.attachTooltip =
     function(targetClass, tooltipText, orientation)
     {
@@ -13,85 +13,93 @@ window.attachTooltip =
                 .toLowerCase()
                 .trim();
 
-        //REMOVE ANY OLD TOOLTIP STYLE TAGS (FROM PREVIOUS VERSIONS)
-        const oldStyle =
-            document.getElementById('global-tooltip-style');
+        //REMOVE ANY PREVIOUS TOOLTIP STYLES WE INJECTED
+        const priorStyles =
+            document.querySelectorAll('style[data-tooltip-style="true"]');
 
-        if (oldStyle)
+        priorStyles.forEach(function(node)
         {
-            oldStyle.parentNode.removeChild(oldStyle);
-        }
+            node.parentNode.removeChild(node);
+        });
 
-        //INJECT CURRENT CSS
+        //INJECT CURRENT CSS (HIGH SPECIFICITY + EXPLICIT RESETS)
         const style =
             document.createElement('style');
 
-        style.id = 'global-tooltip-style';
+        style.setAttribute('data-tooltip-style', 'true');
 
         style.innerHTML =
         `
-        [data-tooltip]
+        /*BASE TOOLTIP*/
+        [data-tooltip][data-tooltip-position]
         {
-            position: relative;
+            position: relative !important;
         }
 
-        [data-tooltip]::after
+        [data-tooltip][data-tooltip-position]::after
         {
             content: attr(data-tooltip);
-            position: absolute;
-            background: #222;
-            color: #ffffff;
-            padding: 6px 10px;
-            font-size: 12px;
-            border-radius: 6px;
-            white-space: nowrap;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.15s ease-in-out;
-            z-index: 9999;
+            position: absolute !important;
+
+            /*RESET ALL SIDES SO OLD CSS CAN'T "WIN"*/
+            top: auto !important;
+            right: auto !important;
+            bottom: auto !important;
+            left: auto !important;
+
+            background: #222 !important;
+            color: #ffffff !important;
+            padding: 6px 10px !important;
+            font-size: 12px !important;
+            border-radius: 6px !important;
+            white-space: nowrap !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
+            transition: opacity 0.15s ease-in-out !important;
+            z-index: 999999 !important;
         }
 
-        /* TOP */
-        [data-tooltip-position="top"]::after
+        /*TOP*/
+        [data-tooltip][data-tooltip-position="top"]::after
         {
-            bottom: 130%;
-            left: 50%;
-            transform: translateX(-50%);
+            bottom: 130% !important;
+            left: 50% !important;
+            transform: translateX(-50%) !important;
         }
 
-        /* BOTTOM */
-        [data-tooltip-position="bottom"]::after
+        /*BOTTOM*/
+        [data-tooltip][data-tooltip-position="bottom"]::after
         {
-            top: 130%;
-            left: 50%;
-            transform: translateX(-50%);
+            top: 130% !important;
+            left: 50% !important;
+            transform: translateX(-50%) !important;
         }
 
-        /* LEFT */
-        [data-tooltip-position="left"]::after
+        /*LEFT*/
+        [data-tooltip][data-tooltip-position="left"]::after
         {
-            right: 130%;
-            top: 50%;
-            transform: translateY(-50%);
+            right: 130% !important;
+            top: 50% !important;
+            transform: translateY(-50%) !important;
         }
 
-        /* RIGHT */
-        [data-tooltip-position="right"]::after
+        /*RIGHT*/
+        [data-tooltip][data-tooltip-position="right"]::after
         {
-            left: 130%;
-            top: 50%;
-            transform: translateY(-50%);
+            left: 130% !important;
+            top: 50% !important;
+            transform: translateY(-50%) !important;
         }
 
-        [data-tooltip]:hover::after
+        [data-tooltip][data-tooltip-position]:hover::after
         {
-            opacity: 1;
+            opacity: 1 !important;
         }
         `;
 
         document.head.appendChild(style);
 
-        //APPLY TO ALL MATCHING ELEMENTS
+        //APPLY ATTRIBUTES
         const elements =
             document.querySelectorAll('.' + targetClass);
 
@@ -100,5 +108,15 @@ window.attachTooltip =
             el.setAttribute('data-tooltip', tooltipText);
             el.setAttribute('data-tooltip-position', position);
             el.style.cursor = 'pointer';
+        });
+
+        //DEBUG LOG (CONFIRMS WHAT WAS ACTUALLY SET)
+        console.log('//TOOLTIP APPLIED:',
+        {
+            targetClass: targetClass,
+            tooltipText: tooltipText,
+            orientation: position,
+            matchedCount: elements.length,
+            samplePositionAttr: elements[0] ? elements[0].getAttribute('data-tooltip-position') : null
         });
     };
